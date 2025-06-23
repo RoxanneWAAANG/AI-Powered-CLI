@@ -25,40 +25,36 @@ def stats(ctx, user_id, days, output_format):
     client = GenAIClient(config)
     
     target_user_id = user_id or config.get('default_user_id', 'cli_user')
+
+    result = client.get_usage_stats(target_user_id, days)
     
-    try:
-        result = client.get_usage_stats(target_user_id, days)
+    if result.get('success'):
+        stats = result['data']
         
-        if result.get('success'):
-            stats = result['data']
-            
-            if output_format == 'json':
-                import json
-                click.echo(json.dumps(stats, indent=2))
-            else:
-                # Text format
-                click.echo(f"Usage Statistics for {target_user_id}")
-                click.echo("=" * 50)
-                click.echo(f"Period: {stats.get('period_days', 'N/A')} days")
-                click.echo(f"Total Requests: {stats.get('total_requests', 0):,}")
-                click.echo(f"Total Input Tokens: {stats.get('total_input_tokens', 0):,}")
-                click.echo(f"Total Output Tokens: {stats.get('total_output_tokens', 0):,}")
-                click.echo(f"Average Response Time: {stats.get('average_response_time_ms', 0)}ms")
-                click.echo(f"Content Filter Events: {stats.get('content_filter_events', 0)}")
-                click.echo(f"Status: {stats.get('status', 'Unknown')}")
-                click.echo(f"Last Request: {stats.get('last_request', 'N/A')}")
-                
-                # Daily breakdown
-                requests_by_day = stats.get('requests_by_day', [])
-                if requests_by_day:
-                    click.echo("\nDaily Breakdown:")
-                    for day_stats in requests_by_day:
-                        click.echo(f"  {day_stats['date']}: {day_stats['requests']} requests, {day_stats['tokens']:,} tokens")
+        if output_format == 'json':
+            import json
+            click.echo(json.dumps(stats, indent=2))
         else:
-            click.echo(f"❌ Error fetching usage stats: {result.get('error')}", err=True)
+            # Text format
+            click.echo(f"Usage Statistics for {target_user_id}")
+            click.echo("=" * 50)
+            click.echo(f"Period: {stats.get('period_days', 'N/A')} days")
+            click.echo(f"Total Requests: {stats.get('total_requests', 0):,}")
+            click.echo(f"Total Input Tokens: {stats.get('total_input_tokens', 0):,}")
+            click.echo(f"Total Output Tokens: {stats.get('total_output_tokens', 0):,}")
+            click.echo(f"Average Response Time: {stats.get('average_response_time_ms', 0)}ms")
+            click.echo(f"Content Filter Events: {stats.get('content_filter_events', 0)}")
+            click.echo(f"Status: {stats.get('status', 'Unknown')}")
+            click.echo(f"Last Request: {stats.get('last_request', 'N/A')}")
             
-    except Exception as e:
-        click.echo(f"❌ Error: {str(e)}", err=True)
+            # Daily breakdown
+            requests_by_day = stats.get('requests_by_day', [])
+            if requests_by_day:
+                click.echo("\nDaily Breakdown:")
+                for day_stats in requests_by_day:
+                    click.echo(f"  {day_stats['date']}: {day_stats['requests']} requests, {day_stats['tokens']:,} tokens")
+    else:
+        click.echo(f"❌ Error fetching usage stats: {result.get('error')}", err=True)
 
 @usage.command()
 @click.option('--user-id', '-u', help='User ID (defaults to configured user)')
@@ -77,39 +73,32 @@ def report(ctx, user_id, days, output):
     client = GenAIClient(config)
     
     target_user_id = user_id or config.get('default_user_id', 'cli_user')
+
+    # Get stats for different time periods
+    periods = [1, 7, days] if days > 7 else [1, days]
+    report_data = {}
     
-    try:
-        # Get stats for different time periods
-        periods = [1, 7, days] if days > 7 else [1, days]
-        report_data = {}
-        
-        click.echo("📊 Generating usage report...")
-        
-        for period in periods:
-            click.echo(f"  📈 Fetching {period} day statistics...")
-            result = client.get_usage_stats(target_user_id, period)
-            if result.get('success'):
-                report_data[f"{period}_days"] = result['data']
-        
-        if not report_data:
-            click.echo("❌ No data available for report generation", err=True)
-            return
-        
-        # Generate report
-        report = generate_usage_report(target_user_id, report_data, days)
-        
-        if output:
-            try:
-                with open(output, 'w', encoding='utf-8') as f:
-                    f.write(report)
-                click.echo(f"✅ Report saved to {output}")
-            except Exception as e:
-                click.echo(f"❌ Error saving report: {e}", err=True)
-        else:
-            click.echo(report)
-            
-    except Exception as e:
-        click.echo(f"❌ Error generating report: {str(e)}", err=True)
+    click.echo("📊 Generating usage report...")
+    
+    for period in periods:
+        click.echo(f"  📈 Fetching {period} day statistics...")
+        result = client.get_usage_stats(target_user_id, period)
+        if result.get('success'):
+            report_data[f"{period}_days"] = result['data']
+    
+    if not report_data:
+        click.echo("❌ No data available for report generation", err=True)
+        return
+    
+    # Generate report
+    report = generate_usage_report(target_user_id, report_data, days)
+    
+    if output:
+        with open(output, 'w', encoding='utf-8') as f:
+            f.write(report)
+        click.echo(f"✅ Report saved to {output}")
+    else:
+        click.echo(report)
 
 @usage.command()
 @click.option('--user-id', '-u', help='User ID (defaults to configured user)')
@@ -125,31 +114,27 @@ def summary(ctx, user_id):
     client = GenAIClient(config)
     
     target_user_id = user_id or config.get('default_user_id', 'cli_user')
+
+    result = client.get_usage_stats(target_user_id, 7)
     
-    try:
-        result = client.get_usage_stats(target_user_id, 7)
+    if result.get('success'):
+        stats = result['data']
         
-        if result.get('success'):
-            stats = result['data']
-            
-            click.echo(f"📊 Quick Summary for {target_user_id}")
-            click.echo("=" * 40)
-            click.echo(f"🔢 Total Requests (7 days): {stats.get('total_requests', 0):,}")
-            click.echo(f"📝 Input Tokens: {stats.get('total_input_tokens', 0):,}")
-            click.echo(f"📤 Output Tokens: {stats.get('total_output_tokens', 0):,}")
-            click.echo(f"⚡ Avg Response Time: {stats.get('average_response_time_ms', 0)}ms")
-            click.echo(f"🛡️  Filter Events: {stats.get('content_filter_events', 0)}")
-            click.echo(f"📅 Last Request: {stats.get('last_request', 'N/A')}")
-            
-            # Status indicator
-            status = stats.get('status', 'unknown')
-            status_emoji = "✅" if status == 'active' else "⚠️"
-            click.echo(f"{status_emoji} Status: {status.title()}")
-        else:
-            click.echo(f"❌ Error: {result.get('error')}", err=True)
-            
-    except Exception as e:
-        click.echo(f"❌ Error: {str(e)}", err=True)
+        click.echo(f"📊 Quick Summary for {target_user_id}")
+        click.echo("=" * 40)
+        click.echo(f"🔢 Total Requests (7 days): {stats.get('total_requests', 0):,}")
+        click.echo(f"📝 Input Tokens: {stats.get('total_input_tokens', 0):,}")
+        click.echo(f"📤 Output Tokens: {stats.get('total_output_tokens', 0):,}")
+        click.echo(f"⚡ Avg Response Time: {stats.get('average_response_time_ms', 0)}ms")
+        click.echo(f"🛡️  Filter Events: {stats.get('content_filter_events', 0)}")
+        click.echo(f"📅 Last Request: {stats.get('last_request', 'N/A')}")
+        
+        # Status indicator
+        status = stats.get('status', 'unknown')
+        status_emoji = "✅" if status == 'active' else "⚠️"
+        click.echo(f"{status_emoji} Status: {status.title()}")
+    else:
+        click.echo(f"❌ Error: {result.get('error')}", err=True)
 
 def generate_usage_report(user_id: str, report_data: dict, max_days: int) -> str:
     """Generate a comprehensive usage report"""

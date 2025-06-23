@@ -69,25 +69,17 @@ def set(ctx, key, value):
     
     # Type conversion for known numeric values
     if key in ['default_max_tokens', 'timeout']:
-        try:
-            value = int(value)
-            if key == 'default_max_tokens' and (value < 1 or value > 4000):
-                click.echo("❌ Error: max_tokens must be between 1 and 4000", err=True)
-                return
-            if key == 'timeout' and (value < 1 or value > 300):
-                click.echo("❌ Error: timeout must be between 1 and 300 seconds", err=True)
-                return
-        except ValueError:
-            click.echo(f"❌ Error: {key} must be a number", err=True)
+        value = int(value)
+        if key == 'default_max_tokens' and (value < 1 or value > 4000):
+            click.echo("❌ Error: max_tokens must be between 1 and 4000", err=True)
+            return
+        if key == 'timeout' and (value < 1 or value > 300):
+            click.echo("❌ Error: timeout must be between 1 and 300 seconds", err=True)
             return
     elif key in ['default_temperature']:
-        try:
-            value = float(value)
-            if value < 0.0 or value > 1.0:
-                click.echo("❌ Error: temperature must be between 0.0 and 1.0", err=True)
-                return
-        except ValueError:
-            click.echo(f"❌ Error: {key} must be a number", err=True)
+        value = float(value)
+        if value < 0.0 or value > 1.0:
+            click.echo("❌ Error: temperature must be between 0.0 and 1.0", err=True)
             return
     elif key == 'output_format':
         if value not in ['text', 'json']:
@@ -147,49 +139,42 @@ def test(ctx):
     api_endpoint = config.get('api_endpoint')
     click.echo(f"🔍 Testing connection to: {api_endpoint}")
     click.echo("📡 Sending test request...")
+
+    # Test with a simple prompt
+    result = client.generate_text("Hello, this is a test message", max_tokens=50)
     
-    try:
-        # Test with a simple prompt
-        result = client.generate_text("Hello, this is a test message", max_tokens=50)
+    if result.get('success'):
+        click.echo("✅ Connection successful!")
         
-        if result.get('success'):
-            click.echo("✅ Connection successful!")
-            
-            # Show some details about the response
-            metadata = result['data'].get('metadata', {})
-            if metadata.get('mock_mode'):
-                click.echo("ℹ️  API is running in mock mode")
-                click.echo("💡 Enable Bedrock Claude 4 Sonnet access for real AI responses")
-            else:
-                click.echo("🤖 Real AI responses are enabled")
-            
-            response_time = metadata.get('response_time_ms', 0)
-            click.echo(f"⚡ Response time: {response_time}ms")
-            
+        # Show some details about the response
+        metadata = result['data'].get('metadata', {})
+        if metadata.get('mock_mode'):
+            click.echo("ℹ️ API is running in mock mode")
+            click.echo("💡 Enable Bedrock Claude 4 Sonnet access for real AI responses")
         else:
-            click.echo("❌ Connection failed", err=True)
-            error = result.get('error', 'Unknown error')
-            click.echo(f"Error: {error}")
-            
-            # Provide helpful troubleshooting
-            status_code = result.get('status_code', 0)
-            if status_code == 403:
-                click.echo("💡 This might be an authentication or permission issue")
-            elif status_code == 404:
-                click.echo("💡 Check if your API endpoint URL is correct")
-            elif status_code >= 500:
-                click.echo("💡 This appears to be a server-side issue")
-            
-            click.echo("\n🔧 Troubleshooting:")
-            click.echo("1. Verify your API endpoint with 'genai config show'")
-            click.echo("2. Check if your AWS GenAI Bot service is deployed")
-            click.echo("3. Ensure the API Gateway is properly configured")
-            
-    except Exception as e:
-        click.echo("❌ Connection test failed", err=True)
-        click.echo(f"Error: {str(e)}")
-        click.echo("\n🔧 Check your configuration:")
-        click.echo(f"API Endpoint: {api_endpoint}")
+            click.echo("🤖 Real AI responses are enabled")
+        
+        response_time = metadata.get('response_time_ms', 0)
+        click.echo(f"⚡ Response time: {response_time}ms")
+        
+    else:
+        click.echo("❌ Connection failed", err=True)
+        error = result.get('error', 'Unknown error')
+        click.echo(f"Error: {error}")
+        
+        # Provide helpful troubleshooting
+        status_code = result.get('status_code', 0)
+        if status_code == 403:
+            click.echo("💡 This might be an authentication or permission issue")
+        elif status_code == 404:
+            click.echo("💡 Check if your API endpoint URL is correct")
+        elif status_code >= 500:
+            click.echo("💡 This appears to be a server-side issue")
+        
+        click.echo("\n🔧 Troubleshooting:")
+        click.echo("1. Verify your API endpoint with 'genai config show'")
+        click.echo("2. Check if your AWS GenAI Bot service is deployed")
+        click.echo("3. Ensure the API Gateway is properly configured")
 
 @config_cmd.command()
 @click.confirmation_option(prompt='Reset all configuration to defaults?')

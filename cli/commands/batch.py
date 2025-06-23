@@ -39,16 +39,16 @@ def process(ctx, input, output, max_tokens, temperature, user_id, max_workers, d
     
     # Load prompts from file
     prompts = load_prompts(input)
-    click.echo(f"📂 Loaded {len(prompts)} prompts from {input}")
+    click.echo(f"Loaded {len(prompts)} prompts from {input}")
     
     if len(prompts) == 0:
-        click.echo("❌ No prompts found in input file", err=True)
+        click.echo("No prompts found in input file", err=True)
         return
     
     # Create output directory
     output_path = Path(output)
     output_path.mkdir(exist_ok=True)
-    click.echo(f"📁 Output directory: {output}")
+    click.echo(f"Output directory: {output}")
     
     # Process prompts
     results = process_prompts_concurrent(

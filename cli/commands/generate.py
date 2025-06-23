@@ -35,60 +35,56 @@ def text(ctx, prompt, max_tokens, temperature, user_id, output_format, save):
         params['temperature'] = temperature
     if user_id:
         params['user_id'] = user_id
+
+    result = client.generate_text(prompt, **params)
     
-    try:
-        result = client.generate_text(prompt, **params)
+    # Handle content policy violations gracefully
+    if not result.get('success') and result.get('status_code') == 400:
+        details = result.get('details', {})
+        if details.get('reason') == 'Content policy violation':
+            click.echo("❌ Content Policy Violation", err=True)
+            click.echo(f"Severity: {details.get('severity', 'Unknown')}")
+            click.echo(f"Message: {result.get('message', 'No additional details')}")
+            return
+    
+    if result.get('success'):
+        generated_text = result['data']['generated_text']
+        metadata = result['data'].get('metadata', {})
         
-        # Handle content policy violations gracefully
-        if not result.get('success') and result.get('status_code') == 400:
-            details = result.get('details', {})
-            if details.get('reason') == 'Content policy violation':
-                click.echo("❌ Content Policy Violation", err=True)
-                click.echo(f"Severity: {details.get('severity', 'Unknown')}")
-                click.echo(f"Message: {result.get('message', 'No additional details')}")
-                return
-        
-        if result.get('success'):
-            generated_text = result['data']['generated_text']
-            metadata = result['data'].get('metadata', {})
-            
-            if output_format == 'json':
-                import json
-                output = json.dumps(result['data'], indent=2)
-                click.echo(output)
-            else:
-                click.echo(generated_text)
-                
-                # Show metadata for text format
-                if metadata:
-                    click.echo("\n--- Response Details ---")
-                    for key, value in metadata.items():
-                        formatted_key = key.replace('_', ' ').title()
-                        click.echo(f"{formatted_key}: {value}")
-            
-            # Save to file if requested
-            if save:
-                try:
-                    with open(save, 'w', encoding='utf-8') as f:
-                        if output_format == 'json':
-                            import json
-                            json.dump(result['data'], f, indent=2)
-                        else:
-                            f.write(generated_text)
-                    click.echo(f"\n✅ Generated text saved to {save}")
-                except Exception as e:
-                    click.echo(f"❌ Error saving file: {e}", err=True)
+        if output_format == 'json':
+            import json
+            output = json.dumps(result['data'], indent=2)
+            click.echo(output)
         else:
-            # Handle other errors
-            error_msg = result.get('error', 'Unknown error')
-            click.echo(f"❌ Error: {error_msg}", err=True)
+            click.echo(generated_text)
             
-            message = result.get('message')
-            if message:
-                click.echo(f"💡 {message}")
-                
-    except Exception as e:
-        click.echo(f"❌ Error: {str(e)}", err=True)
+            # Show metadata for text format
+            if metadata:
+                click.echo("\n--- Response Details ---")
+                for key, value in metadata.items():
+                    formatted_key = key.replace('_', ' ').title()
+                    click.echo(f"{formatted_key}: {value}")
+        
+        # Save to file if requested
+        if save:
+            try:
+                with open(save, 'w', encoding='utf-8') as f:
+                    if output_format == 'json':
+                        import json
+                        json.dump(result['data'], f, indent=2)
+                    else:
+                        f.write(generated_text)
+                click.echo(f"\n✅ Generated text saved to {save}")
+            except Exception as e:
+                click.echo(f"❌ Error saving file: {e}", err=True)
+    else:
+        # Handle other errors
+        error_msg = result.get('error', 'Unknown error')
+        click.echo(f"❌ Error: {error_msg}", err=True)
+        
+        message = result.get('message')
+        if message:
+            click.echo(f"💡 {message}")
 
 @generate.command()
 @click.option('--user-id', '-u', help='User ID for tracking')
@@ -112,57 +108,50 @@ def interactive(ctx, user_id):
     session_user_id = user_id or config.get('default_user_id', 'cli_user')
     
     while True:
-        try:
-            prompt = click.prompt("You", type=str)
-            
-            if prompt.lower() in ['quit', 'exit']:
-                click.echo("👋 Goodbye!")
-                break
-            elif prompt.lower() == 'help':
-                click.echo("Commands:")
-                click.echo("  help   - Show this help")
-                click.echo("  stats  - Show usage statistics")
-                click.echo("  quit   - Exit interactive mode")
-                continue
-            elif prompt.lower() == 'stats':
-                stats_result = client.get_usage_stats(session_user_id)
-                if stats_result.get('success'):
-                    stats = stats_result['data']
-                    click.echo(f"📊 Total Requests (7 days): {stats.get('total_requests', 0)}")
-                    click.echo(f"🔢 Total tokens: {stats.get('total_input_tokens', 0) + stats.get('total_output_tokens', 0)}")
-                else:
-                    click.echo("❌ Could not fetch stats")
-                continue
-            
-            # Generate response
-            result = client.generate_text(prompt, user_id=session_user_id)
-            
-            if result.get('success'):
-                generated_text = result['data']['generated_text']
-                metadata = result['data'].get('metadata', {})
-                
-                click.echo(f"\n🤖 Bot: {generated_text}")
-                
-                # Show brief metadata
-                if metadata.get('mock_mode'):
-                    click.echo("ℹ️  (Mock mode - enable Bedrock for real AI responses)")
-                else:
-                    tokens = metadata.get('output_tokens', 0)
-                    time_ms = metadata.get('response_time_ms', 0)
-                    click.echo(f"ℹ️  ({tokens} tokens, {time_ms}ms)")
-                click.echo()
-            else:
-                click.echo(f"❌ Error: {result.get('error')}", err=True)
-                message = result.get('message')
-                if message:
-                    click.echo(f"💡 {message}")
-                click.echo()
-                
-        except KeyboardInterrupt:
-            click.echo("\n👋 Goodbye!")
+        prompt = click.prompt("You", type=str)
+        
+        if prompt.lower() in ['quit', 'exit']:
+            click.echo("👋 Goodbye!")
             break
-        except Exception as e:
-            click.echo(f"❌ Error: {str(e)}", err=True)
+        elif prompt.lower() == 'help':
+            click.echo("Commands:")
+            click.echo("  help   - Show this help")
+            click.echo("  stats  - Show usage statistics")
+            click.echo("  quit   - Exit interactive mode")
+            continue
+        elif prompt.lower() == 'stats':
+            stats_result = client.get_usage_stats(session_user_id)
+            if stats_result.get('success'):
+                stats = stats_result['data']
+                click.echo(f"📊 Total Requests (7 days): {stats.get('total_requests', 0)}")
+                click.echo(f"🔢 Total tokens: {stats.get('total_input_tokens', 0) + stats.get('total_output_tokens', 0)}")
+            else:
+                click.echo("❌ Could not fetch stats")
+            continue
+        
+        # Generate response
+        result = client.generate_text(prompt, user_id=session_user_id)
+        
+        if result.get('success'):
+            generated_text = result['data']['generated_text']
+            metadata = result['data'].get('metadata', {})
+            
+            click.echo(f"\n🤖 Bot: {generated_text}")
+            
+            # Show brief metadata
+            if metadata.get('mock_mode'):
+                click.echo("ℹ️  (Mock mode - enable Bedrock for real AI responses)")
+            else:
+                tokens = metadata.get('output_tokens', 0)
+                time_ms = metadata.get('response_time_ms', 0)
+                click.echo(f"ℹ️  ({tokens} tokens, {time_ms}ms)")
+            click.echo()
+        else:
+            click.echo(f"❌ Error: {result.get('error')}", err=True)
+            message = result.get('message')
+            if message:
+                click.echo(f"💡 {message}")
+            click.echo()
 
 @generate.command()
 @click.option('--file', '-f', required=True, help='File containing prompts (one per line)')
@@ -216,18 +205,15 @@ def file(ctx, file, output_dir, max_tokens, temperature, user_id):
             # Save output
             filename = f"output_{i:03d}.txt"
             output_file = output_path / filename
+
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(result['data']['generated_text'])
             
-            try:
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(result['data']['generated_text'])
-                
-                click.echo(f"  ✅ Saved to {output_file}")
-                successful += 1
-            except Exception as e:
-                click.echo(f"  ❌ Error saving: {e}")
-                failed += 1
+            click.echo(f"Saved to {output_file}")
+            successful += 1
+
         else:
-            click.echo(f"  ❌ Generation failed: {result.get('error')}")
+            click.echo(f"Generation failed: {result.get('error')}")
             failed += 1
     
     click.echo(f"\n📊 File processing completed!")
