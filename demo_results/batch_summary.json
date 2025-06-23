@@ -1,0 +1,75 @@
+{
+  "input_file": "demo_prompts.txt",
+  "total_prompts": 4,
+  "successful": 4,
+  "failed": 0,
+  "content_filtered": 0,
+  "output_directory": "demo_results",
+  "processing_time": 0.6982119083404541,
+  "results": [
+    {
+      "success": true,
+      "index": 0,
+      "prompt": "What are the benefits of cloud computing?",
+      "output_file": "demo_results/result_0001.txt",
+      "processing_time": 0.20281291007995605,
+      "metadata": {
+        "input_tokens": 7,
+        "output_tokens": 48,
+        "response_time_ms": 50,
+        "mock_mode": true,
+        "user_id": "cli_user",
+        "content_filter_status": "passed",
+        "note": "Enable Bedrock Claude 4 Sonnet access to get real AI responses"
+      }
+    },
+    {
+      "success": true,
+      "index": 1,
+      "prompt": "Write a marketing email for a new product launch",
+      "output_file": "demo_results/result_0002.txt",
+      "processing_time": 0.18697476387023926,
+      "metadata": {
+        "input_tokens": 9,
+        "output_tokens": 50,
+        "response_time_ms": 50,
+        "mock_mode": true,
+        "user_id": "cli_user",
+        "content_filter_status": "passed",
+        "note": "Enable Bedrock Claude 4 Sonnet access to get real AI responses"
+      }
+    },
+    {
+      "success": true,
+      "index": 2,
+      "prompt": "Explain blockchain technology in simple terms",
+      "output_file": "demo_results/result_0003.txt",
+      "processing_time": 0.1611921787261963,
+      "metadata": {
+        "input_tokens": 6,
+        "output_tokens": 47,
+        "response_time_ms": 50,
+        "mock_mode": true,
+        "user_id": "cli_user",
+        "content_filter_status": "passed",
+        "note": "Enable Bedrock Claude 4 Sonnet access to get real AI responses"
+      }
+    },
+    {
+      "success": true,
+      "index": 3,
+      "prompt": "Create a recipe for chocolate chip cookies",
+      "output_file": "demo_results/result_0004.txt",
+      "processing_time": 0.1472320556640625,
+      "metadata": {
+        "input_tokens": 7,
+        "output_tokens": 48,
+        "response_time_ms": 50,
+        "mock_mode": true,
+        "user_id": "cli_user",
+        "content_filter_status": "passed",
+        "note": "Enable Bedrock Claude 4 Sonnet access to get real AI responses"
+      }
+    }
+  ]
+}

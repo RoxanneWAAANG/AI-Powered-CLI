@@ -1,0 +1,8 @@
+[MOCK] AI Generated Response for: 'Explain blockchain technology in simple terms'
+
+This is a simulated Claude 4 Sonnet response. The actual AI response will be much more sophisticated once Bedrock model access is enabled.
+
+Parameters used:
+- Max tokens: 1000
+- Temperature: 0.7
+- User ID: cli_user
